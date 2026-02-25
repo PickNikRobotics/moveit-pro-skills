@@ -349,6 +349,25 @@ moveit_pro run -c my_config --no-drivers
 | `/opt/moveit_pro/` | System install directory |
 | `~/user_ws/` | User workspace (inside containers) |
 
+## Starting the Web UI
+
+After running `moveit_pro run`, the web UI opens automatically in a browser at `http://localhost`. To suppress this, use `--no-browser`. To run without the frontend entirely, use `--headless`.
+
+```bash
+moveit_pro run -c my_config -w /path/to/workspace          # Opens browser automatically
+moveit_pro run -c my_config -w /path/to/workspace --no-browser  # No auto-open
+moveit_pro run --headless                                    # No frontend at all
+```
+
+## Migration Guides
+
+When upgrading MoveIt Pro versions, check the release notes for migration notes and breaking changes. Major versions (8.0.0, 9.0.0) contain the most significant migration guides. Release notes are published at:
+
+- **Release Notes:** https://docs.picknik.ai/release-notes/
+- **Individual release:** `https://docs.picknik.ai/release-notes/YYYY/MM/DD/VERSION/`
+
+Look for "Migration Notes", "Migration Guide", and "Breaking Changes" sections within each release.
+
 ## Troubleshooting
 
 - **"requires a built docker image"** - Run `moveit_pro build user_image`
