@@ -40,10 +40,16 @@ moveit_pro setup_workspace https://github.com/org/repo.git
 
 ### Blocking Commands
 
-These commands occupy the terminal until stopped. Run them in background shells.
+These commands block the terminal until stopped with Ctrl+C or `moveit_pro down`. Run them in a background shell or separate terminal.
 
-- `moveit_pro run` - Blocks, runs the full application
-- `moveit_pro rviz` - Blocks, opens RViz GUI
+- `moveit_pro run` — Starts the full application (runtime + web UI). Blocks until stopped.
+- `moveit_pro run --headless` — Starts only the runtime (no web frontend). Still blocks.
+- `moveit_pro rviz` — Opens the RViz GUI. Blocks until closed.
+
+To stop a running instance from another terminal:
+```bash
+moveit_pro down
+```
 
 ### Interactive Shells (Use docker exec Instead)
 
@@ -73,7 +79,7 @@ export MOVEIT_LICENSE_KEY="XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX"
 
 **Configuration** (stored at `~/.config/moveit_pro/moveit_pro_config.9.yaml`):
 ```bash
-moveit_pro configure -c PKG -w PATH           # Set config package and workspace
+moveit_pro configure -c my_config -w PATH           # Set config package and workspace
 moveit_pro setup_workspace URL_OR_PATH         # Setup workspace (always pass identifier)
 moveit_pro envfile                             # Generate .env file
 moveit_pro envfile --all                       # Generate .env with all variables
@@ -93,7 +99,7 @@ moveit_pro build user_workspace --colcon-args "--packages-select my_package"
 
 **Running:**
 ```bash
-moveit_pro run -c PKG -w PATH --no-browser     # Start without browser (recommended for agents)
+moveit_pro run -c my_config -w PATH --no-browser     # Start without browser (recommended for agents)
 moveit_pro run --headless / -h                  # Start without frontend
 moveit_pro run --no-drivers / -n                # Start without hardware drivers
 moveit_pro run --only-drivers / -o              # Start drivers only
@@ -103,7 +109,7 @@ moveit_pro run -v                               # Run with verbose output
 
 **Testing:**
 ```bash
-moveit_pro test -c PKG -w PATH                 # Build and run colcon test
+moveit_pro test -c my_config -w PATH                 # Build and run colcon test
 moveit_pro test --colcon-args "--packages-select my_package"
 moveit_pro test --no-drivers --headless         # Test without drivers, headless
 ```
@@ -123,6 +129,48 @@ moveit_pro update_acm URDF_PATH                # Update Allowed Collision Matrix
 moveit_pro new config -n my_robot_config -b lab_sim -o /path/to/output --no-input
 ```
 Options: `--output-dir/-o`, `--package-name/-n`, `--based-on/-b`, `--no-input`
+
+## Creating Objectives
+
+Objectives are behavior trees in XML format (BehaviorTree.CPP v4). Each objective is a tree of behavior nodes that execute sequentially, in parallel, or with fallback logic.
+
+### Structure
+
+```xml
+<root BTCPP_format="4" main_tree_to_execute="My Objective">
+  <BehaviorTree ID="My Objective">
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!-- Behavior nodes go here -->
+    </Control>
+  </BehaviorTree>
+</root>
+```
+
+### Key Patterns
+
+- **Sequence** — runs children in order, fails if any child fails
+- **Fallback** — tries children in order, succeeds on first success
+- **Parallel** — runs children concurrently
+- **SubTree** — reuses an existing objective as a node (with port remapping)
+- **Decorators** — wrap nodes for retries, conditions, timeouts
+
+### Best Practices
+
+- **Reuse existing objectives** as SubTree nodes instead of rebuilding logic
+- **Validate behaviors exist** before adding them — each node's `ID` must match a registered behavior plugin
+- **Check port schemas** — nodes have typed InputPorts and OutputPorts; use the blackboard for data flow between nodes
+- **Preserve metadata** when editing — keep Metadata nodes, `main_tree_to_execute`, tree IDs, and `_collapsed` attributes
+
+### Objective Files
+
+Objectives are `.xml` files in the config package's `objectives/` directory. On the host, the user workspace is mounted into the container, so edits on either side are reflected:
+
+- **Host:** `~/moveit_pro/<workspace>/src/<config_package>/objectives/`
+- **Container:** `~/user_ws/src/<config_package>/objectives/`
+
+The workspace path is set via `moveit_pro configure -w PATH` and stored in `~/.config/moveit_pro/moveit_pro_config.9.yaml`.
+
+The REST API (port 3200) also provides CRUD operations for objectives — see Swagger docs at `http://localhost:3200/docs` when MoveIt Pro is running.
 
 ## Running Objectives Programmatically
 
@@ -349,14 +397,28 @@ moveit_pro run -c my_config --no-drivers
 | `/opt/moveit_pro/` | System install directory |
 | `~/user_ws/` | User workspace (inside containers) |
 
-## Starting the Web UI
+## Launch Modes
 
-After running `moveit_pro run`, the web UI opens automatically in a browser at `http://localhost`. To suppress this, use `--no-browser`. To run without the frontend entirely, use `--headless`.
+All `moveit_pro run` variants **block the terminal** until stopped. Use a separate terminal or background shell for other work.
+
+| Mode | Command | What runs | Web UI |
+|------|---------|-----------|--------|
+| Default | `moveit_pro run -c my_config` | Runtime + frontend | Opens browser automatically at `http://localhost` |
+| No browser | `moveit_pro run -c my_config --no-browser` | Runtime + frontend | Available at `http://localhost`, browser not auto-opened |
+| Headless | `moveit_pro run -c my_config --headless` | Runtime only | None — use the REST API (port 3200) or rosbridge (port 3201) |
+| Drivers only | `moveit_pro run -c my_config --only-drivers` | Hardware drivers only | None |
+| No drivers | `moveit_pro run -c my_config --no-drivers` | Runtime + frontend, no drivers | Opens browser |
 
 ```bash
-moveit_pro run -c my_config -w /path/to/workspace          # Opens browser automatically
-moveit_pro run -c my_config -w /path/to/workspace --no-browser  # No auto-open
-moveit_pro run --headless                                    # No frontend at all
+moveit_pro run -c my_config -w /path/to/workspace              # Opens browser automatically
+moveit_pro run -c my_config -w /path/to/workspace --no-browser # No auto-open, UI still at http://localhost
+moveit_pro run -c my_config --headless                         # No frontend at all
+```
+
+To stop from another terminal:
+```bash
+moveit_pro down          # Stop all containers
+moveit_pro down --rmi    # Stop and remove Docker images
 ```
 
 ## Migration Guides
@@ -371,7 +433,7 @@ Look for "Migration Notes", "Migration Guide", and "Breaking Changes" sections w
 ## Troubleshooting
 
 - **"requires a built docker image"** - Run `moveit_pro build user_image`
-- **"requires an active user workspace"** - Run `moveit_pro configure -c PKG -w PATH`
+- **"requires an active user workspace"** - Run `moveit_pro configure -c my_config -w PATH`
 - **Build failures** - Run commands in container: `docker exec "$CONTAINER" bash -c "cd ~/user_ws && colcon build"`
 - **Port in use** - Run `moveit_pro down` to free ports 3200-3203
 - **Complete reset** - `moveit_pro down --rmi`
