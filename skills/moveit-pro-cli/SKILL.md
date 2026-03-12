@@ -130,6 +130,48 @@ moveit_pro new config -n my_robot_config -b lab_sim -o /path/to/output --no-inpu
 ```
 Options: `--output-dir/-o`, `--package-name/-n`, `--based-on/-b`, `--no-input`
 
+## Creating Objectives
+
+Objectives are behavior trees in XML format (BehaviorTree.CPP v4). Each objective is a tree of behavior nodes that execute sequentially, in parallel, or with fallback logic.
+
+### Structure
+
+```xml
+<root BTCPP_format="4" main_tree_to_execute="My Objective">
+  <BehaviorTree ID="My Objective">
+    <Control ID="Sequence" name="TopLevelSequence">
+      <!-- Behavior nodes go here -->
+    </Control>
+  </BehaviorTree>
+</root>
+```
+
+### Key Patterns
+
+- **Sequence** — runs children in order, fails if any child fails
+- **Fallback** — tries children in order, succeeds on first success
+- **Parallel** — runs children concurrently
+- **SubTree** — reuses an existing objective as a node (with port remapping)
+- **Decorators** — wrap nodes for retries, conditions, timeouts
+
+### Best Practices
+
+- **Reuse existing objectives** as SubTree nodes instead of rebuilding logic
+- **Validate behaviors exist** before adding them — each node's `ID` must match a registered behavior plugin
+- **Check port schemas** — nodes have typed InputPorts and OutputPorts; use the blackboard for data flow between nodes
+- **Preserve metadata** when editing — keep Metadata nodes, `main_tree_to_execute`, tree IDs, and `_collapsed` attributes
+
+### Objective Files
+
+Objectives are `.xml` files in the config package's `objectives/` directory. On the host, the user workspace is mounted into the container, so edits on either side are reflected:
+
+- **Host:** `~/moveit_pro/<workspace>/src/<config_package>/objectives/`
+- **Container:** `~/user_ws/src/<config_package>/objectives/`
+
+The workspace path is set via `moveit_pro configure -w PATH` and stored in `~/.config/moveit_pro/moveit_pro_config.9.yaml`.
+
+The REST API (port 3200) also provides CRUD operations for objectives — see Swagger docs at `http://localhost:3200/docs` when MoveIt Pro is running.
+
 ## Running Objectives Programmatically
 
 MoveIt Pro must be running (`moveit_pro run`) before executing objectives.
