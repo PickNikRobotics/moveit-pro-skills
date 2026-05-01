@@ -10,9 +10,13 @@ Agent skills for working with [MoveIt Pro](https://docs.picknik.ai/) — the Doc
 
 ## Install
 
+Install every skill in this repo (recommended):
+
 ```bash
-npx skills add PickNikRobotics/moveit-pro-skills
+npx skills add PickNikRobotics/moveit-pro-skills -y
 ```
+
+The `-y` flag skips the interactive multi-select and installs all skills. Add `-g` for a global install, or `--agent claude-code` to scope to a specific agent.
 
 Install a specific skill:
 
