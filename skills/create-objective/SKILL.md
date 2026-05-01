@@ -1,7 +1,7 @@
 ---
 name: create-objective
-description: Build or modify MoveIt Pro Behavior Trees — Objectives (XML) and custom Behavior Nodes (C++). Use when the user asks to create, edit, or scaffold an Objective, or to add a new Behavior Node to a MoveIt Pro workspace. Accepts an inline description or a path to a markdown SOP document.
-argument-hint: [inline description OR path to a markdown SOP document]
+description: Build or modify MoveIt Pro Behavior Trees — Objectives (XML) and custom Behavior Nodes (C++). Use when the user asks to create, edit, or scaffold an Objective, or to add a new Behavior Node to a MoveIt Pro workspace. Accepts an inline description or a path to an SOP (Standard Operating Procedure) document (.md or .csv).
+argument-hint: [inline description OR path to an SOP document (.md or .csv)]
 ---
 
 You are building Behavior Trees for a MoveIt Pro robotics application. This workspace uses BehaviorTree.CPP with MoveIt Pro's plugin system.
@@ -20,27 +20,32 @@ The user describes the Objective directly in the invocation (e.g., `/create-obje
 
 **Action:** Proceed directly to **Step 1: Discover Available Nodes**.
 
-### Workflow 2: Markdown SOP Document
+### Workflow 2: SOP (Standard Operating Procedure) Document
 
-The user provides a path to a Standard Operating Procedure (SOP) document (e.g., `/create-objective path/to/sop.md`). SOPs describe complex, multi-phase workflows with fallbacks, conditional stages, and global interrupts. They typically come from domain experts who know the process but not Behavior Tree concepts.
+The user provides a path to an SOP document (e.g., `/create-objective path/to/sop.md` or `path/to/sop.csv`). SOPs describe complex, multi-phase workflows with fallbacks, conditional stages, and global interrupts. They typically come from domain experts who know the process but not Behavior Tree concepts.
+
+Both **markdown** and **CSV** are accepted. Markdown SOPs are usually structured as numbered phases with sub-steps; CSV SOPs are usually one row per step with columns for phase, sub-phase, parameters, and fallback targets. Read the file as-is and infer the structure — modern LLMs parse tabular CSV SOPs as readily as prose markdown ones.
 
 **Action:** Read the full SOP document, then follow **Interpreting an SOP** below before proceeding to Step 1.
 
-## Interpreting an SOP
+## Interpreting an SOP (Standard Operating Procedure)
 
-Read the full SOP first. Before searching for Behavior Nodes or writing any XML, build a mental model of the Behavior Tree structure by mapping SOP elements to BT concepts. See `example-sop-driver-reliability-testing.md` in this skill's directory for a worked example.
+Read the full SOP first. Before searching for Behavior Nodes or writing any XML, build a mental model of the Behavior Tree structure by mapping SOP elements to BT concepts. See `example-sop-driver-reliability-testing.md` in this skill's directory for a worked markdown example.
 
 ### Mapping SOP Elements to BT Concepts
 
-- **Numbered top-level sections** (e.g., "1. Setup", "2. Test Loop", "3. Teardown") → top-level named Sequences.
-- **Sub-sections** (e.g., "2a. Capture at each location", "2b. Merge and visualize") → nested named Sequences within the parent phase.
+These mappings apply to both markdown and CSV SOPs — the surface form differs but the underlying concepts are the same.
+
+- **Numbered top-level sections / distinct Phase column values** (e.g., "1. Setup", "2. Test Loop", "3. Teardown") → top-level named Sequences.
+- **Sub-sections / Sub-phase column values** (e.g., "2a. Capture at each location") → nested named Sequences within the parent phase.
 - **"Repeat N times"** → `Repeat` decorator wrapping a Sequence.
 - **"For each X"** → `ForEach` decorator.
 - **"If X fails, retry up to N times"** → `RetryUntilSuccessful` decorator.
 - **"If still failing, log and skip"** → `ForceSuccess` wrapping the `RetryUntilSuccessful` (so the parent Sequence continues).
-- **Parameters section** → SubTree input ports.
+- **Parameters section / domain-specific CSV columns** (e.g., Coverage, Category) → SubTree input ports. When multiple rows share a Sub-phase but differ in these columns, the pattern is a parameterized SubTree.
 - **Conditional steps** ("If X → Y") → `IfThenElse` or `Fallback` nodes.
-- **Cross-cutting interrupts** (conditions that can fire at any step, like "if hand detected, stop") → `Parallel` monitoring branch wrapping the nominal Sequence.
+- **Fallback columns / "on failure" branches** → local `Fallback` nodes if specific to a step, or `Parallel` monitoring branches if the same fallback applies to many steps (a global interrupt).
+- **Continuation markers** (e.g., a `^` Process ID in a CSV row) → keep as part of the previous step; they are description continuations, not new nodes.
 
 ### Planning the BT Structure
 
@@ -339,6 +344,6 @@ Read those references first; they are the source of truth and stay in sync with 
 - Registration pattern: `src/example_behaviors/src/register_behaviors.cpp`
 - Plugin descriptor: `src/example_behaviors/example_behaviors_plugin_description.xml`
 
-## Example SOP Document
+## Example SOP (Standard Operating Procedure) Document
 
 `example-sop-driver-reliability-testing.md` (in this skill's directory) demonstrates a markdown SOP: setup/loop/teardown phases, a repeated capture-at-waypoint pattern that becomes a SubTree, and retries with `RetryUntilSuccessful` + `ForceSuccess`. Use it as a template for the kind of structure a markdown SOP should have.
