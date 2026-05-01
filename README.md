@@ -7,6 +7,7 @@ Agent skills for working with [MoveIt Pro](https://docs.picknik.ai/) — the Doc
 - **moveit-pro-cli** — Guide for using the MoveIt Pro platform programmatically and via CLI
 - **ros2-cli** — Guide for working with ROS 2 systems via CLI
 - **create-objective** — Build or modify MoveIt Pro Behavior Trees: Objectives (XML) and custom Behavior Nodes (C++). Accepts an inline description or a markdown SOP document.
+- **robot-config** — Build a MoveIt Pro robot configuration package (mock, sim, or physical) from a URDF, CAD, or STLs and verify it builds, launches, and behaves correctly.
 
 ## Install
 
