@@ -86,7 +86,7 @@ There are two kinds of artifacts you may need to create:
 1. **Objectives** — XML files that define Behavior Tree structure (flow control, sequencing, subtree composition).
 2. **Behavior Nodes** — C++ classes that implement leaf-node actions (the actual robot logic).
 
-Most tasks only require a new Objective XML. Only create a new C++ Behavior Node if the required functionality doesn't already exist. See [Behavior Trees concepts](https://docs.picknik.ai/concepts/behavior_trees/behavior_trees/) for background on the architecture.
+Most tasks only require a new Objective XML. Only create a new C++ Behavior Node if the required functionality doesn't already exist. See [Behavior Trees concepts](https://docs.picknik.ai/concepts/behavior_trees/) for background on the architecture.
 
 ## Step 1: Discover Available Nodes
 
@@ -326,9 +326,9 @@ Before finalizing an Objective XML, check:
 
 For all C++ authoring conventions — base class selection, header/source layout, port constants and naming, metadata, registration, and CMake — follow the guidance in the workspace's `src/behavior/CLAUDE.md` (creating Behavior plugins) and the official documentation:
 
-- https://docs.picknik.ai/concepts/creating_behaviors/creating_behaviors/ — concepts and base class overview.
-- https://docs.picknik.ai/how_to/custom_behaviors/additional_behavior_classes/additional_behavior_classes/ — how to choose between `SyncActionNode`, `AsyncBehaviorBase`, `ServiceClientBehaviorBase`, `ActionClientBehaviorBase`, `GetMessageFromTopicBehaviorBase`, etc.
-- https://docs.picknik.ai/how_to/custom_behaviors/adding_ports/adding_ports/ — port declarations and validation.
+- https://docs.picknik.ai/concepts/creating_behaviors/ — concepts and base class overview.
+- https://docs.picknik.ai/how_to/custom_behaviors/additional_behavior_classes/ — how to choose between `SyncActionNode`, `AsyncBehaviorBase`, `ServiceClientBehaviorBase`, `ActionClientBehaviorBase`, `GetMessageFromTopicBehaviorBase`, etc.
+- https://docs.picknik.ai/how_to/custom_behaviors/adding_ports/ — port declarations and validation.
 
 Read those references first; they are the source of truth and stay in sync with the codebase. After implementing the node:
 
