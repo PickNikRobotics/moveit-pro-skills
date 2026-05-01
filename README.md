@@ -9,6 +9,7 @@ Agent skills for working with [MoveIt Pro](https://docs.picknik.ai/) — the Doc
 - **create-objective** — Build or modify MoveIt Pro Behavior Trees: Objectives (XML) and custom Behavior Nodes (C++). Accepts an inline description or a markdown SOP document.
 - **robot-config** — Build a MoveIt Pro robot configuration package (mock, sim, or physical) from a URDF, CAD, or STLs and verify it builds, launches, and behaves correctly.
 - **debug-objective** — Debug MoveIt Pro Objectives (XML behavior trees) and Behaviors (C++ plugins) using runtime logs. Covers log location, common error patterns ("Missing manifest", "package not found", port errors), and ready-to-paste `docker exec` commands.
+- **create-behavior** — Author a new MoveIt Pro Behavior plugin (C++): header, source, registration, CMake, and test wiring. Pairs with `create-objective` for the XML side.
 
 ## Install
 
