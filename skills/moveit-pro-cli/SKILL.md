@@ -1,6 +1,6 @@
 ---
 name: moveit-pro-cli
-description: Guide for using the MoveIt Pro platform programmatically and via CLI. Covers the moveit_pro command, running/saving objectives, camera streams, RViz, dev containers, building workspaces, and ACM updates. Use when the user asks about MoveIt Pro commands, running objectives, accessing cameras, debugging containers, building workspaces, or programmatic robot control.
+description: Guide for using the MoveIt Pro platform programmatically and via CLI. Covers the moveit_pro command, running/saving objectives, web-bridge and rosbridge access, camera streams, RViz, dev containers, building workspaces, and ACM updates. Use when the user asks about MoveIt Pro commands, running objectives, accessing cameras, debugging containers, building workspaces, or programmatic robot control.
 ---
 
 # MoveIt Pro
@@ -11,6 +11,7 @@ MoveIt Pro is a Docker-based robotic manipulation platform. The `moveit_pro` CLI
 
 - Running or configuring MoveIt Pro
 - Executing or saving objectives programmatically
+- Choosing between native ROS 2, web-bridge, and legacy rosbridge access
 - Viewing camera streams or launching RViz
 - Working inside dev containers with ROS 2
 - Building workspaces, running tests
@@ -225,16 +226,36 @@ objective_xml_string: |
 '
 ```
 
-### Via Websocket (roslibpy) - No ROS Required
+### Recommended APIs after MoveIt Pro 9.4
 
-Connect to rosbridge on port 3201 from the host machine. No ROS installation needed.
+Use native ROS 2 clients (`rclpy`, `rclcpp`, or `ros2` CLI) for host-side scripts and automation. MoveIt Pro 9.4 changed port `3201` from the legacy rosbridge JSON protocol to the MoveIt Pro `web-bridge`, which uses binary CDR messages under the hood. Code written for `roslibpy`, `roslibjs`, `rossharp`, `roslibrust`, or `jrosbridge` can connect to a WebSocket but fail to exchange useful data if it is pointed at `3201`.
+
+For Custom View Panes embedded in the MoveIt Pro UI, use `IframeROSClient` with `enable_web_bridge: true` so the pane talks through the parent-frame `web-bridge`. Do not use `IframeROSClient({ useDirectConnection: true })` on MoveIt Pro 9.4 or later unless you also enable the legacy rosbridge sidecar and point it at that sidecar port.
+
+Use the legacy rosbridge sidecar only when an existing client cannot move to native ROS 2 or the parent-frame `web-bridge` API.
+
+### Via Legacy Websocket (roslibpy) - No ROS Required
+
+For MoveIt Pro 9.4 and later, start the opt-in rosbridge sidecar and connect to port `3204` by default:
+
+```bash
+moveit_pro run -c my_config --enable-rosbridge
+```
+
+Override the sidecar port if needed:
+
+```bash
+moveit_pro run -c my_config --enable-rosbridge --rosbridge-port=9090
+```
+
+Only use port `3201` for legacy rosbridge clients on MoveIt Pro versions before 9.4.
 
 ```python
 import roslibpy
 from roslibpy import ActionClient
 import time
 
-client = roslibpy.Ros(host='localhost', port=3201)
+client = roslibpy.Ros(host='localhost', port=3204)
 client.run()
 
 action = ActionClient(client, '/do_objective',
@@ -384,9 +405,10 @@ moveit_pro run -c my_config --no-drivers
 |------|---------|----------|
 | 80 | Web UI (nginx) | HTTP |
 | 3200 | REST API (Swagger at /docs) | HTTP |
-| 3201 | Rosbridge | WebSocket |
+| 3201 | web-bridge | WebSocket (binary CDR) |
 | 3202 | Video streams | HTTP (MJPEG) |
 | 3203 | AI/LLM server | HTTP |
+| 3204 | Legacy rosbridge sidecar (opt-in) | WebSocket (JSON) |
 
 ## Key Paths
 
@@ -405,7 +427,7 @@ All `moveit_pro run` variants **block the terminal** until stopped. Use a separa
 |------|---------|-----------|--------|
 | Default | `moveit_pro run -c my_config` | Runtime + frontend | Opens browser automatically at `http://localhost` |
 | No browser | `moveit_pro run -c my_config --no-browser` | Runtime + frontend | Available at `http://localhost`, browser not auto-opened |
-| Headless | `moveit_pro run -c my_config --headless` | Runtime only | None — use the REST API (port 3200) or rosbridge (port 3201) |
+| Headless | `moveit_pro run -c my_config --headless` | Runtime only | None — use native ROS 2, the REST API (port 3200), or opt-in legacy rosbridge (port 3204) |
 | Drivers only | `moveit_pro run -c my_config --only-drivers` | Hardware drivers only | None |
 | No drivers | `moveit_pro run -c my_config --no-drivers` | Runtime + frontend, no drivers | Opens browser |
 
@@ -435,6 +457,6 @@ Look for "Migration Notes", "Migration Guide", and "Breaking Changes" sections w
 - **"requires a built docker image"** - Run `moveit_pro build user_image`
 - **"requires an active user workspace"** - Run `moveit_pro configure -c my_config -w PATH`
 - **Build failures** - Run commands in container: `docker exec "$CONTAINER" bash -c "cd ~/user_ws && colcon build"`
-- **Port in use** - Run `moveit_pro down` to free ports 3200-3203
+- **Port in use** - Run `moveit_pro down` to free ports 3200-3203; also check 3204 if `--enable-rosbridge` is active
 - **Complete reset** - `moveit_pro down --rmi`
 - **Docs** - https://docs.picknik.ai/ or `moveit_pro COMMAND --help`
