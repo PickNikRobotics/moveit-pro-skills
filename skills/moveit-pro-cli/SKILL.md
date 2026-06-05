@@ -227,13 +227,30 @@ objective_xml_string: |
 
 ### Via Websocket (roslibpy) - No ROS Required
 
-Connect to rosbridge on port 3201 from the host machine. No ROS installation needed.
+Connect over the rosbridge JSON protocol from the host machine. No ROS installation needed.
+
+**Port differs by version.** Through MoveIt Pro 9.3, the web UI exposes `rosbridge_server` directly on port `3201` — point `roslibpy` there. Starting in 9.4, port `3201` is the MoveIt Pro web-bridge (a binary CDR wire format), which does **not** speak the rosbridge JSON protocol, so `roslibpy` / `roslibjs` / `rossharp` / `roslibrust` / `jrosbridge` clients cannot reach `3201` as-is.
+
+On 9.4+ you have two options:
+
+- **Recommended:** port the client to the native ROS 2 client libraries (`rclpy` / `rclcpp`) — faster on the wire and no extra process on the robot.
+- **Compatibility ramp:** launch with an opt-in rosbridge sidecar and point the client at it. The sidecar is off by default and binds to port `3204`:
+
+  ```bash
+  moveit_pro run -c my_config --enable-rosbridge                 # sidecar on port 3204
+  moveit_pro run -c my_config --enable-rosbridge --rosbridge-port=9090  # override the port
+  ```
+
+  The rosbridge protocol surface is unchanged; only the port differs. Keep high-bandwidth topics (cameras, point clouds, planning-scene bursts) off the sidecar — JSON serialization is roughly an order of magnitude slower per message than the web-bridge's CDR. See the [Legacy Websocket Compatibility](https://docs.picknik.ai/how_to/programmatic_sdks/rosbridge/rosbridge/) guide for full details.
+
+The example below uses port `3201` (MoveIt Pro ≤9.3); on 9.4+ with `--enable-rosbridge`, change the port to `3204` (or your `--rosbridge-port`).
 
 ```python
 import roslibpy
 from roslibpy import ActionClient
 import time
 
+# Port 3201 on MoveIt Pro <=9.3; use 3204 on 9.4+ with --enable-rosbridge.
 client = roslibpy.Ros(host='localhost', port=3201)
 client.run()
 
@@ -384,7 +401,8 @@ moveit_pro run -c my_config --no-drivers
 |------|---------|----------|
 | 80 | Web UI (nginx) | HTTP |
 | 3200 | REST API (Swagger at /docs) | HTTP |
-| 3201 | Rosbridge | WebSocket |
+| 3201 | Web-bridge (rosbridge on ≤9.3; binary CDR web-bridge on 9.4+) | WebSocket |
+| 3204 | Rosbridge sidecar (9.4+, opt-in via `--enable-rosbridge`) | WebSocket |
 | 3202 | Video streams | HTTP (MJPEG) |
 | 3203 | AI/LLM server | HTTP |
 
@@ -405,7 +423,7 @@ All `moveit_pro run` variants **block the terminal** until stopped. Use a separa
 |------|---------|-----------|--------|
 | Default | `moveit_pro run -c my_config` | Runtime + frontend | Opens browser automatically at `http://localhost` |
 | No browser | `moveit_pro run -c my_config --no-browser` | Runtime + frontend | Available at `http://localhost`, browser not auto-opened |
-| Headless | `moveit_pro run -c my_config --headless` | Runtime only | None — use the REST API (port 3200) or rosbridge (port 3201) |
+| Headless | `moveit_pro run -c my_config --headless` | Runtime only | None — use the REST API (port 3200) or the web-bridge (port 3201; add `--enable-rosbridge` for a rosbridge sidecar on 9.4+) |
 | Drivers only | `moveit_pro run -c my_config --only-drivers` | Hardware drivers only | None |
 | No drivers | `moveit_pro run -c my_config --no-drivers` | Runtime + frontend, no drivers | Opens browser |
 
